@@ -2,8 +2,8 @@
     "name": "barton-malow-linkedin-jobs-scraper",
     "version": "18.0.0",
     "description": "Scrape public available jobs on Linkedin using headless browser",
-    "main": "build/index.ts",
-    "types": "build/index.ts",
+    "main": "src/index.ts",
+    "types": "src/index.ts",
     "scripts": {
         "clean": "rm -fr build",
         "build": "npm run clean && tsc",
