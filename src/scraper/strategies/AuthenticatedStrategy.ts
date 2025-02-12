@@ -411,7 +411,7 @@ export class AuthenticatedStrategy extends RunStrategy {
 
         await page.goto(url, {
             waitUntil: 'load',
-            timeout: 10000
+            timeout: 15000
         });
 
         // Verify session
@@ -424,7 +424,7 @@ export class AuthenticatedStrategy extends RunStrategy {
         }
 
         try {
-            await page.waitForSelector(selectors.container, { timeout: 10000 });
+            await page.waitForSelector(selectors.container, { timeout: 15000 });
         } catch (err: any) {
             logger.error(' run.waitForSelector ERROR: ', err);
             logger.info(tag, `No jobs found, skip`);
