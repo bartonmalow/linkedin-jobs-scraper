@@ -1,13 +1,13 @@
-import { config } from "../../config";
-import { RunStrategy, IRunStrategyResult, ILoadResult } from "./RunStrategy";
-import { Browser, Page, CDPSession } from "puppeteer";
-import { events, IMetrics } from "../events";
-import { sleep } from "../../utils/utils";
-import { normalizeString } from "../../utils/string";
-import { IQuery } from "../query";
-import { logger } from "../../logger/logger";
-import { urls } from "../constants";
-import debug from "debug";
+import { config } from '../../config';
+import { RunStrategy, IRunStrategyResult, ILoadResult } from './RunStrategy';
+import { Browser, Page, CDPSession } from 'puppeteer';
+import { events, IMetrics } from '../events';
+import { sleep } from '../../utils/utils';
+import { normalizeString } from '../../utils/string';
+import { IQuery } from '../query';
+import { logger } from '../../logger/logger';
+import { urls } from '../constants';
+import debug from 'debug';
 
 export const selectors = {
     container: '.scaffold-layout__list',
@@ -20,7 +20,8 @@ export const selectors = {
     companyLink: '.job-details-jobs-unified-top-card__company-name a',
     place: '.artdeco-entity-lockup__caption',
     date: 'time',
-    dateText: '.job-details-jobs-unified-top-card__primary-description-container span:nth-of-type(3)',
+    dateText:
+        '.job-details-jobs-unified-top-card__primary-description-container span:nth-of-type(3)',
     description: '.jobs-description',
     detailsPanel: '.jobs-search__job-details--container',
     detailsTop: '.jobs-details-top-card',
@@ -29,8 +30,9 @@ export const selectors = {
     pagination: '.jobs-search-two-pane__pagination',
     privacyAcceptBtn: 'button.artdeco-global-alert__action',
     paginationNextBtn: 'li[data-test-pagination-page-btn].selected + li',
-    paginationBtn: (index: number) => `li[data-test-pagination-page-btn="${index}"] button`,
-    requiredSkills: '.job-details-how-you-match__skills-item-subtitle',
+    paginationBtn: (index: number) =>
+        `li[data-test-pagination-page-btn="${index}"] button`,
+    requiredSkills: '.job-details-how-you-match__skills-item-subtitle'
 };
 
 /**
@@ -46,9 +48,11 @@ export class AuthenticatedStrategy extends RunStrategy {
      * @static
      * @private
      */
-    private static _isAuthenticatedSession = async (page: Page): Promise<boolean> => {
+    private static _isAuthenticatedSession = async (
+        page: Page
+    ): Promise<boolean> => {
         const cookies = await page.cookies();
-        return cookies.some(e => e.name === "li_at");
+        return cookies.some(e => e.name === 'li_at');
     };
 
     /**
@@ -62,7 +66,7 @@ export class AuthenticatedStrategy extends RunStrategy {
     private static _loadJobs = async (
         page: Page,
         jobsTot: number,
-        timeout: number = 2000,
+        timeout: number = 5000
     ): Promise<any> => {
         const pollingTime = 50;
         let elapsed = 0;
@@ -71,7 +75,7 @@ export class AuthenticatedStrategy extends RunStrategy {
 
         try {
             while (elapsed < timeout) {
-                const jobsCount = await page.evaluate((selector) => {
+                const jobsCount = await page.evaluate(selector => {
                     return document.querySelectorAll(selector).length;
                 }, selectors.jobs);
 
@@ -82,8 +86,9 @@ export class AuthenticatedStrategy extends RunStrategy {
                 await sleep(pollingTime);
                 elapsed += pollingTime;
             }
+        } catch (err) {
+            logger.error('_loadJobs ERROR: ', err);
         }
-        catch (err) {}
 
         return {
             success: false,
@@ -102,7 +107,7 @@ export class AuthenticatedStrategy extends RunStrategy {
     private static _loadJobDetails = async (
         page: Page,
         jobId: string,
-        timeout: number = 2000,
+        timeout: number = 5000
     ): Promise<ILoadResult> => {
         const pollingTime = 50;
         let elapsed = 0;
@@ -114,14 +119,22 @@ export class AuthenticatedStrategy extends RunStrategy {
             while (elapsed < timeout) {
                 loaded = await page.evaluate(
                     (jobId, panelSelector, descriptionSelector) => {
-                        const detailsPanel = document.querySelector(panelSelector) as HTMLElement;
-                        const description = document.querySelector(descriptionSelector) as HTMLElement;
-                        return detailsPanel && detailsPanel.innerHTML.includes(jobId) &&
-                            description && description.innerText.length > 0;
+                        const detailsPanel = document.querySelector(
+                            panelSelector
+                        ) as HTMLElement;
+                        const description = document.querySelector(
+                            descriptionSelector
+                        ) as HTMLElement;
+                        return (
+                            detailsPanel &&
+                            detailsPanel.innerHTML.includes(jobId) &&
+                            description &&
+                            description.innerText.length > 0
+                        );
                     },
                     jobId,
                     selectors.detailsPanel,
-                    selectors.description,
+                    selectors.description
                 );
 
                 if (loaded) {
@@ -131,8 +144,9 @@ export class AuthenticatedStrategy extends RunStrategy {
                 await sleep(pollingTime);
                 elapsed += pollingTime;
             }
+        } catch (err) {
+            logger.error('_loadJobDetails ERROR: ', err);
         }
-        catch (err) {}
 
         return {
             success: false,
@@ -154,12 +168,12 @@ export class AuthenticatedStrategy extends RunStrategy {
         page: Page,
         tag: string,
         paginationSize: number = 25,
-        timeout: number = 2000,
+        timeout: number = 5000
     ): Promise<ILoadResult> => {
         const url = new URL(page.url());
 
         // Extract offset from url
-        let offset = parseInt(url.searchParams.get('start') || "0", 10);
+        let offset = parseInt(url.searchParams.get('start') || '0', 10);
         offset += paginationSize;
 
         // Update offset in url
@@ -170,7 +184,7 @@ export class AuthenticatedStrategy extends RunStrategy {
 
         // Navigate new url
         await page.goto(url.toString(), {
-            waitUntil: 'load',
+            waitUntil: 'load'
         });
 
         const pollingTime = 100;
@@ -181,12 +195,9 @@ export class AuthenticatedStrategy extends RunStrategy {
 
         // Wait for new jobs to load
         while (!loaded) {
-            loaded = await page.evaluate(
-                (selector) => {
-                    return document.querySelectorAll(selector).length > 0;
-                },
-                selectors.jobs,
-            );
+            loaded = await page.evaluate(selector => {
+                return document.querySelectorAll(selector).length > 0;
+            }, selectors.jobs);
 
             if (loaded) return { success: true };
 
@@ -211,19 +222,17 @@ export class AuthenticatedStrategy extends RunStrategy {
      */
     private static _hideChatPanel = async (
         page: Page,
-        tag: string,
+        tag: string
     ): Promise<void> => {
         try {
-            await page.evaluate((selector) => {
-                    const div = document.querySelector(selector) as HTMLElement;
-                    if (div) {
-                        div.style.display = "none";
-                    }
-                },
-                selectors.chatPanel);
-        }
-        catch (err) {
-            logger.debug(tag, "Failed to hide chat panel");
+            await page.evaluate(selector => {
+                const div = document.querySelector(selector) as HTMLElement;
+                if (div) {
+                    div.style.display = 'none';
+                }
+            }, selectors.chatPanel);
+        } catch (err) {
+            logger.debug(tag, 'Failed to hide chat panel');
         }
     };
 
@@ -234,20 +243,21 @@ export class AuthenticatedStrategy extends RunStrategy {
      */
     private static _acceptCookies = async (
         page: Page,
-        tag: string,
+        tag: string
     ): Promise<void> => {
         try {
             await page.evaluate(() => {
                 const buttons = Array.from(document.querySelectorAll('button'));
-                const cookieButton = buttons.find(e => e.innerText.includes('Accept cookies'));
+                const cookieButton = buttons.find(e =>
+                    e.innerText.includes('Accept cookies')
+                );
 
                 if (cookieButton) {
                     cookieButton.click();
                 }
             });
-        }
-        catch (err) {
-            logger.debug(tag, "Failed to accept cookies");
+        } catch (err) {
+            logger.debug(tag, 'Failed to accept cookies: ', err);
         }
     };
 
@@ -258,20 +268,20 @@ export class AuthenticatedStrategy extends RunStrategy {
      */
     private static _acceptPrivacy = async (
         page: Page,
-        tag: string,
+        tag: string
     ): Promise<void> => {
         try {
-            await page.evaluate((selector) => {
-                const privacyButton = Array.from(document.querySelectorAll<HTMLElement>(selector))
-                    .find(e => e.innerText === 'Accept');
+            await page.evaluate(selector => {
+                const privacyButton = Array.from(
+                    document.querySelectorAll<HTMLElement>(selector)
+                ).find(e => e.innerText === 'Accept');
 
                 if (privacyButton) {
                     privacyButton.click();
                 }
             }, selectors.privacyAcceptBtn);
-        }
-        catch (err) {
-            logger.debug(tag, "Failed to accept privacy");
+        } catch (err) {
+            logger.debug(tag, 'Failed to accept privacy');
         }
     };
 
@@ -287,33 +297,48 @@ export class AuthenticatedStrategy extends RunStrategy {
         page: Page,
         cdpSession: CDPSession,
         tag: string,
-        timeout = 4,
-    ): Promise<{ success: boolean, url?: string, error?: string | Error }> => {
+        timeout = 4
+    ): Promise<{ success: boolean; url?: string; error?: string | Error }> => {
         try {
             logger.debug(tag, 'Try extracting apply link');
             const currentUrl = page.url();
             const elapsed = 0;
             const sleepTimeMs = 100;
 
-            if (await page.evaluate((applyBtnSelector: string) => {
-                const applyBtn = document.querySelector(applyBtnSelector) as HTMLButtonElement;
+            if (
+                await page.evaluate((applyBtnSelector: string) => {
+                    const applyBtn = document.querySelector(
+                        applyBtnSelector
+                    ) as HTMLButtonElement;
 
-                if (applyBtn) {
-                    applyBtn.click();
-                    return true;
-                }
+                    if (applyBtn) {
+                        applyBtn.click();
+                        return true;
+                    }
 
-                return false;
-            }, selectors.applyBtn)) {
-
+                    return false;
+                }, selectors.applyBtn)
+            ) {
                 while (elapsed < timeout) {
-                    const targetsResponse = await cdpSession.send('Target.getTargets');
+                    const targetsResponse = await cdpSession.send(
+                        'Target.getTargets'
+                    );
 
                     // The first target of type page with a valid url different from main page should be our guy
-                    if (targetsResponse.targetInfos && targetsResponse.targetInfos.length > 1) {
+                    if (
+                        targetsResponse.targetInfos &&
+                        targetsResponse.targetInfos.length > 1
+                    ) {
                         for (const targetInfo of targetsResponse.targetInfos) {
-                            if (targetInfo.attached && targetInfo.type === 'page' && targetInfo.url && targetInfo.url !== currentUrl) {
-                                await cdpSession.send('Target.closeTarget', { targetId: targetInfo.targetId });
+                            if (
+                                targetInfo.attached &&
+                                targetInfo.type === 'page' &&
+                                targetInfo.url &&
+                                targetInfo.url !== currentUrl
+                            ) {
+                                await cdpSession.send('Target.closeTarget', {
+                                    targetId: targetInfo.targetId
+                                });
                                 return { success: true, url: targetInfo.url };
                             }
                         }
@@ -323,12 +348,10 @@ export class AuthenticatedStrategy extends RunStrategy {
                 }
 
                 return { success: false, error: 'timeout' };
-            }
-            else {
+            } else {
                 return { success: false, error: 'apply button not found' };
             }
-        }
-        catch (err: any) {
+        } catch (err: any) {
             logger.warn(tag, 'Failed to extract apply link', err);
             return { success: false, error: err };
         }
@@ -349,7 +372,7 @@ export class AuthenticatedStrategy extends RunStrategy {
         cdpSession: CDPSession,
         url: string,
         query: IQuery,
-        location: string,
+        location: string
     ): Promise<IRunStrategyResult> => {
         let tag = `[${query.query}][${location}]`;
 
@@ -357,25 +380,25 @@ export class AuthenticatedStrategy extends RunStrategy {
             processed: 0,
             failed: 0,
             missed: 0,
-            skipped: 0,
+            skipped: 0
         };
 
         let paginationIndex = query.options?.pageOffset || 0;
         let paginationSize = 25;
 
         // Navigate to home page
-        logger.debug(tag, "Opening", urls.home);
+        logger.debug(tag, 'Opening', urls.home);
 
         await page.goto(urls.home, {
-            waitUntil: 'load',
+            waitUntil: 'load'
         });
 
         // Set cookie
-        logger.info("Setting authentication cookie");
+        logger.info('Setting authentication cookie');
         await page.setCookie({
-            name: "li_at",
+            name: 'li_at',
             value: config.LI_AT_COOKIE!,
-            domain: ".www.linkedin.com"
+            domain: '.www.linkedin.com'
         });
 
         // Override start by the page offset
@@ -384,23 +407,26 @@ export class AuthenticatedStrategy extends RunStrategy {
         url = _url.href;
 
         // Open search url
-        logger.info(tag, "Opening", url);
+        logger.info(tag, 'Opening', url);
 
         await page.goto(url, {
             waitUntil: 'load',
+            timeout: 10000
         });
 
         // Verify session
         if (!(await AuthenticatedStrategy._isAuthenticatedSession(page))) {
-            logger.error("The provided session cookie is invalid. Check the documentation on how to obtain a valid session cookie.");
+            logger.error(
+                'The provided session cookie is invalid. Check the documentation on how to obtain a valid session cookie.'
+            );
             this.scraper.emit(events.scraper.invalidSession);
             return { exit: true };
         }
 
         try {
-            await page.waitForSelector(selectors.container, { timeout: 5000 });
-        }
-        catch(err: any) {
+            await page.waitForSelector(selectors.container, { timeout: 10000 });
+        } catch (err: any) {
+            logger.error(' run.waitForSelector ERROR: ', err);
             logger.info(tag, `No jobs found, skip`);
             return { exit: false };
         }
@@ -409,11 +435,13 @@ export class AuthenticatedStrategy extends RunStrategy {
         while (metrics.processed < query.options!.limit!) {
             // Verify session in the loop
             if (!(await AuthenticatedStrategy._isAuthenticatedSession(page))) {
-                logger.warn(tag, "Session is invalid, this may cause the scraper to fail.");
+                logger.warn(
+                    tag,
+                    'Session is invalid, this may cause the scraper to fail.'
+                );
                 this.scraper.emit(events.scraper.invalidSession);
-            }
-            else {
-                logger.info(tag, "Session is valid");
+            } else {
+                logger.info(tag, 'Session is valid');
             }
 
             await AuthenticatedStrategy._hideChatPanel(page, tag);
@@ -424,7 +452,7 @@ export class AuthenticatedStrategy extends RunStrategy {
 
             // Get number of all job links in the page
             let jobsTot = await page.evaluate(
-                (selector) => document.querySelectorAll(selector).length,
+                selector => document.querySelectorAll(selector).length,
                 selectors.jobs
             );
 
@@ -434,8 +462,13 @@ export class AuthenticatedStrategy extends RunStrategy {
             }
 
             // Jobs loop
-            while (jobIndex < jobsTot && metrics.processed < query.options!.limit!) {
-                tag = `[${query.query}][${location}][${paginationIndex * paginationSize + jobIndex + 1}]`;
+            while (
+                jobIndex < jobsTot &&
+                metrics.processed < query.options!.limit!
+            ) {
+                tag = `[${query.query}][${location}][${
+                    paginationIndex * paginationSize + jobIndex + 1
+                }]`;
 
                 let jobId;
                 let jobLink;
@@ -462,7 +495,7 @@ export class AuthenticatedStrategy extends RunStrategy {
                         selectors.title,
                         selectors.company,
                         selectors.place,
-                        selectors.date,
+                        selectors.date
                     ]);
 
                     const jobFieldsResult = await page.evaluate(
@@ -475,44 +508,66 @@ export class AuthenticatedStrategy extends RunStrategy {
                             dateSelector: string,
                             jobIndex: number
                         ) => {
-                            const job = document.querySelectorAll(jobsSelector)[jobIndex];
-                            const link = job.querySelector(linkSelector) as HTMLElement;
+                            const job =
+                                document.querySelectorAll(jobsSelector)[
+                                    jobIndex
+                                ];
+                            const link = job.querySelector(
+                                linkSelector
+                            ) as HTMLElement;
 
                             // Click job link and scroll
                             link.scrollIntoView();
                             link.click();
 
                             // Extract job link (relative)
-                            const protocol = window.location.protocol + "//";
+                            const protocol = window.location.protocol + '//';
                             const hostname = window.location.hostname;
-                            const jobLink = protocol + hostname + link.getAttribute("href");
+                            const jobLink =
+                                protocol + hostname + link.getAttribute('href');
 
-                            const jobId = job.getAttribute("data-job-id");
+                            const jobId = job.getAttribute('data-job-id');
 
-                            let title = job.querySelector(titleSelector) ?
-                                (<HTMLElement>job.querySelector(titleSelector)).innerText : "";
+                            let title = job.querySelector(titleSelector)
+                                ? (<HTMLElement>(
+                                      job.querySelector(titleSelector)
+                                  )).innerText
+                                : '';
 
                             if (title.includes('\n')) {
                                 title = title.split('\n')[1];
                             }
 
-                            let company = "";
+                            let company = '';
 
                             if (job.querySelector(companySelector)) {
-                                let companyElem = job.querySelector<HTMLElement>(companySelector)!;
+                                let companyElem =
+                                    job.querySelector<HTMLElement>(
+                                        companySelector
+                                    )!;
                                 company = companyElem.innerText;
                             }
 
-                            const companyImgLink = (<HTMLElement>job.querySelector("img"))?.getAttribute("src") ?? undefined;
+                            const companyImgLink =
+                                (<HTMLElement>(
+                                    job.querySelector('img')
+                                ))?.getAttribute('src') ?? undefined;
 
-                            const place = job.querySelector(placeSelector) ?
-                                (<HTMLElement>job.querySelector(placeSelector)).innerText : "";
+                            const place = job.querySelector(placeSelector)
+                                ? (<HTMLElement>(
+                                      job.querySelector(placeSelector)
+                                  )).innerText
+                                : '';
 
-                            const date = job.querySelector(dateSelector) ?
-                                (<HTMLElement>job.querySelector(dateSelector)).getAttribute('datetime') : "";
+                            const date = job.querySelector(dateSelector)
+                                ? (<HTMLElement>(
+                                      job.querySelector(dateSelector)
+                                  )).getAttribute('datetime')
+                                : '';
 
-                            const isPromoted = !!(Array.from(job.querySelectorAll('li'))
-                                .find(e => e.innerText === 'Promoted'));
+                            const isPromoted = !!Array.from(
+                                job.querySelectorAll('li')
+                            ).find(e => e.innerText === 'Promoted');
 
                             return {
                                 jobId,
@@ -522,7 +577,7 @@ export class AuthenticatedStrategy extends RunStrategy {
                                 companyImgLink,
                                 place,
                                 date,
-                                isPromoted,
+                                isPromoted
                             };
                         },
                         selectors.jobs,
@@ -549,8 +604,16 @@ export class AuthenticatedStrategy extends RunStrategy {
                         metrics.skipped += 1;
                         jobIndex += 1;
 
-                        if (metrics.processed < query.options!.limit! && jobIndex === jobsTot && jobsTot < paginationSize) {
-                            const loadJobsResult = await AuthenticatedStrategy._loadJobs(page, jobsTot);
+                        if (
+                            metrics.processed < query.options!.limit! &&
+                            jobIndex === jobsTot &&
+                            jobsTot < paginationSize
+                        ) {
+                            const loadJobsResult =
+                                await AuthenticatedStrategy._loadJobs(
+                                    page,
+                                    jobsTot
+                                );
 
                             if (loadJobsResult.success) {
                                 jobsTot = loadJobsResult.count;
@@ -559,122 +622,157 @@ export class AuthenticatedStrategy extends RunStrategy {
 
                         if (jobIndex === jobsTot) {
                             break;
-                        }
-                        else {
+                        } else {
                             continue;
                         }
                     }
 
                     // Try to load job details and extract job link
-                    logger.debug(tag, 'Evaluating selectors', [
-                        selectors.jobs,
-                    ]);
+                    logger.debug(tag, 'Evaluating selectors', [selectors.jobs]);
 
-                    loadDetailsResult = await AuthenticatedStrategy._loadJobDetails(page, jobId!);
+                    loadDetailsResult =
+                        await AuthenticatedStrategy._loadJobDetails(
+                            page,
+                            jobId!
+                        );
 
                     // Check if loading job details has failed
                     if (!loadDetailsResult.success) {
-                        logger.error(tag, loadDetailsResult.error);
+                        logger.error(
+                            'Loading job details has failed: ',
+                            loadDetailsResult.error
+                        );
                         jobIndex += 1;
                         continue;
                     }
 
                     // Use custom description function if available
                     logger.debug(tag, 'Evaluating selectors', [
-                        selectors.description,
+                        selectors.description
                     ]);
 
                     if (query.options?.descriptionFn) {
-                        [jobDescription, jobDescriptionHTML] = await Promise.all([
-                            page.evaluate(`(${query.options.descriptionFn.toString()})();`),
-                            page.evaluate((selector) => {
-                                return (<HTMLElement>document.querySelector(selector)).outerHTML;
-                            }, selectors.description)
-                        ]);
-                    }
-                    else {
-                        [jobDescription, jobDescriptionHTML] = await page.evaluate((selector) => {
-                                const el = (<HTMLElement>document.querySelector(selector));
+                        [jobDescription, jobDescriptionHTML] =
+                            await Promise.all([
+                                page.evaluate(
+                                    `(${query.options.descriptionFn.toString()})();`
+                                ),
+                                page.evaluate(selector => {
+                                    return (<HTMLElement>(
+                                        document.querySelector(selector)
+                                    )).outerHTML;
+                                }, selectors.description)
+                            ]);
+                    } else {
+                        [jobDescription, jobDescriptionHTML] =
+                            await page.evaluate(selector => {
+                                const el = <HTMLElement>(
+                                    document.querySelector(selector)
+                                );
                                 return [el.innerText, el.outerHTML];
-                            },
-                            selectors.description
-                        );
+                            }, selectors.description);
                     }
 
                     jobDescription = jobDescription as string;
 
                     // Extract date text (eg '1 week ago')
-                    jobDateText = await page.evaluate((selector) => {
-                        const el = document.querySelector(selector) as HTMLElement | null;
+                    jobDateText = await page.evaluate(selector => {
+                        const el = document.querySelector(
+                            selector
+                        ) as HTMLElement | null;
 
                         if (el) {
                             return el.innerText;
-                        }
-                        else {
+                        } else {
                             return '';
                         }
                     }, selectors.dateText);
 
                     // Extract company link
-                    jobCompanyLink = await page.evaluate((selector) => {
+                    jobCompanyLink = await page.evaluate(selector => {
                         const el = document.querySelector(selector);
 
                         if (el) {
-                            return el.getAttribute("href") || '';
-                        }
-                        else {
+                            return el.getAttribute('href') || '';
+                        } else {
                             return '';
                         }
                     }, selectors.companyLink);
 
                     // Extract required skills
                     logger.debug(tag, 'Evaluating selectors', [
-                        selectors.requiredSkills,
+                        selectors.requiredSkills
                     ]);
 
                     if (query.options?.skills) {
                         try {
-                            await page.waitForSelector(selectors.requiredSkills, {timeout: 2000});
+                            await page.waitForSelector(
+                                selectors.requiredSkills,
+                                { timeout: 5000 }
+                            );
 
-                            jobSkills = await page.evaluate((jobSkillsSelector: string) => {
-                                const nodes = document.querySelectorAll(jobSkillsSelector);
+                            jobSkills = await page.evaluate(
+                                (jobSkillsSelector: string) => {
+                                    const nodes =
+                                        document.querySelectorAll(
+                                            jobSkillsSelector
+                                        );
 
-                                if (!nodes.length) {
-                                    return undefined;
-                                }
+                                    if (!nodes.length) {
+                                        return undefined;
+                                    }
 
-                                return Array.from(nodes)
-                                    .flatMap(e => e.textContent!.split(/,|and/))
-                                    .map(e => e.replace(/[\n\r\t ]+/g, ' ').trim())
-                                    .filter(e => e.length);
-                            }, selectors.requiredSkills);
-                        }
-                        catch(err) {
-                            logger.info('Timeout loading skills selector');
+                                    return Array.from(nodes)
+                                        .flatMap(e =>
+                                            e.textContent!.split(/,|and/)
+                                        )
+                                        .map(e =>
+                                            e.replace(/[\n\r\t ]+/g, ' ').trim()
+                                        )
+                                        .filter(e => e.length);
+                                },
+                                selectors.requiredSkills
+                            );
+                        } catch (err) {
+                            logger.info(
+                                'Timeout loading skills selector: ',
+                                err
+                            );
                         }
                     }
 
                     // Extract job insights
                     logger.debug(tag, 'Evaluating selectors', [
-                        selectors.insights,
+                        selectors.insights
                     ]);
 
-                    jobInsights = await page.evaluate((jobInsightsSelector: string) => {
-                        const nodes = document.querySelectorAll(jobInsightsSelector);
-                        return Array.from(nodes).map(e => e.textContent!
-                            .replace(/[\n\r\t ]+/g, ' ').trim());
-                    }, selectors.insights);
+                    jobInsights = await page.evaluate(
+                        (jobInsightsSelector: string) => {
+                            const nodes =
+                                document.querySelectorAll(jobInsightsSelector);
+                            return Array.from(nodes).map(e =>
+                                e
+                                    .textContent!.replace(/[\n\r\t ]+/g, ' ')
+                                    .trim()
+                            );
+                        },
+                        selectors.insights
+                    );
 
                     // Apply link
                     if (query.options?.applyLink) {
-                        const applyLinkRes = await AuthenticatedStrategy._extractApplyLink(page, cdpSession, tag);
+                        const applyLinkRes =
+                            await AuthenticatedStrategy._extractApplyLink(
+                                page,
+                                cdpSession,
+                                tag
+                            );
 
                         if (applyLinkRes.success) {
                             jobApplyLink = applyLinkRes.url as string;
                         }
                     }
-                }
-                catch(err: any) {
+                } catch (err: any) {
                     const errorMessage = `${tag}\t${err.message}`;
                     this.scraper.emit(events.scraper.error, errorMessage);
                     jobIndex++;
@@ -684,7 +782,7 @@ export class AuthenticatedStrategy extends RunStrategy {
 
                 // Emit data (NB: should be outside of try/catch block to be properly tested)
                 this.scraper.emit(events.scraper.data, {
-                    query: query.query || "",
+                    query: query.query || '',
                     location: location,
                     jobId: jobId!,
                     jobIndex: jobIndex,
@@ -700,7 +798,7 @@ export class AuthenticatedStrategy extends RunStrategy {
                     date: jobDate!,
                     dateText: jobDateText!,
                     insights: jobInsights,
-                    skills: jobSkills,
+                    skills: jobSkills
                 });
 
                 jobIndex += 1;
@@ -708,8 +806,13 @@ export class AuthenticatedStrategy extends RunStrategy {
                 logger.info(tag, `Processed`);
 
                 // Try fetching more jobs
-                if (metrics.processed < query.options!.limit! && jobIndex === jobsTot && jobsTot < paginationSize) {
-                    const loadJobsResult = await AuthenticatedStrategy._loadJobs(page, jobsTot);
+                if (
+                    metrics.processed < query.options!.limit! &&
+                    jobIndex === jobsTot &&
+                    jobsTot < paginationSize
+                ) {
+                    const loadJobsResult =
+                        await AuthenticatedStrategy._loadJobs(page, jobsTot);
 
                     if (loadJobsResult.success) {
                         jobsTot = loadJobsResult.count;
@@ -727,15 +830,14 @@ export class AuthenticatedStrategy extends RunStrategy {
 
             // Check if we reached the limit of jobs to process
             if (metrics.processed === query.options!.limit!) {
-                logger.info(tag, 'Query limit reached!')
+                logger.info(tag, 'Query limit reached!');
 
                 // Emit metrics
                 this.scraper.emit(events.scraper.metrics, metrics);
                 logger.info(tag, 'Metrics:', metrics);
 
                 break;
-            }
-            else {
+            } else {
                 metrics.missed += paginationSize - jobIndex;
             }
 
@@ -746,14 +848,20 @@ export class AuthenticatedStrategy extends RunStrategy {
             // Try to paginate
             paginationIndex += 1;
             logger.info(tag, `Pagination requested [${paginationIndex}]`);
-            const paginationResult = await AuthenticatedStrategy._paginate(page, tag);
+            const paginationResult = await AuthenticatedStrategy._paginate(
+                page,
+                tag
+            );
 
             if (!paginationResult.success) {
-                logger.info(tag, `Couldn\'t find more jobs for the running query`);
+                logger.info(
+                    tag,
+                    `Couldn\'t find more jobs for the running query`
+                );
                 break;
             }
         }
 
         return { exit: false };
-    }
+    };
 }
